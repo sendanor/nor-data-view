@@ -2,6 +2,7 @@
 
 "use strict";
 
+var Q = require('q');
 var debug = require('nor-debug');
 var merge = require('merge');
 var copy = require('nor-data').copy;
@@ -13,11 +14,16 @@ var ref = require('nor-ref');
 function compute_keys(o, opts, req, res) {
 	debug.assert(o).is('object');
 	debug.assert(opts).is('object');
-	Object.keys(opts).forEach(function(key) {
+	return Object.keys(opts).map(function(key) {
 		debug.assert(opts[key]).is('function');
-		o[key] = opts[key].call(o, req, res);
+		return function compute_step() {
+			return Q.when(opts[key].call(o, req, res)).then(function(value) {
+				o[key] = value;
+			});
+		};
+	}).reduce(Q.when, Q).then(function() {
+		return o;
 	});
-	return o;
 }
 
 /** */
@@ -76,8 +82,8 @@ ResourceView.prototype.element = function(req, res, opts) {
 	opts = merge(view.opts, opts || {});
 	//debug.log('(after) opts = ', opts);
 	var views = opts.views || ResourceView.views;
-	return function(item) {
-		return Q.fcall(function() {
+	return function data_view_element_0(item) {
+		return Q.fcall(function data_view_element_1() {
 			
 			if(is.string(item)) {
 				debug.assert(item).is('uuid');
@@ -99,7 +105,7 @@ ResourceView.prototype.element = function(req, res, opts) {
 	
 	
 			var body = strip(item).specials().get();
-			opts.keys.forEach(function(key) {
+			opts.keys.forEach(function data_view_element_2(key) {
 	
 				var path = [req].concat(render_path(opts.path, params)).concat([item.$id]);
 				//debug.log("path = ", ref.apply(undefined , path));
@@ -136,13 +142,15 @@ ResourceView.prototype.element = function(req, res, opts) {
 			}
 	
 			if(is.obj(view.compute_keys)) {
-				body = compute_keys(body, view.compute_keys, req, res);
+				return compute_keys(body, view.compute_keys, req, res);
+			} else {
+				return body;
 			}
-	
+
+		}).then(function data_view_element_3(body) {
 			if(is.obj(opts.compute_keys)) {
-				body = compute_keys(body, opts.compute_keys, req, res);
+				return compute_keys(body, opts.compute_keys, req, res);
 			}
-	
 			return body;
 		}); // End of Q.fcall()
 	}; // end of function(item)
@@ -157,31 +165,34 @@ ResourceView.prototype.collection = function(req, res, opts) {
 	//debug.log("opts = ", opts);
 	opts = merge(view.opts, opts || {});
 	//debug.log("(after) opts = ", opts);
-	return function(items) {
-		debug.assert(items).is('array');
-		var element_opts = copy(opts);
-		var rendered_path = render_path(element_opts.path, element_opts.params);
-		var path = [req].concat(rendered_path);
-		if(opts.elementPath) {
-			element_opts.path = opts.elementPath;
-		}
-		//debug.log("element_opts = ", element_opts);
-		var body = {};
-		body.$ref = ref.apply(undefined, path);
-		body.$ = items.map(view.element(req, res, element_opts));
-		//debug.log('body = ', body);
+	return function data_view_collection_0(items) {
+		return Q.fcall(function data_view_collection_1() {
+			debug.assert(items).is('array');
+			var element_opts = copy(opts);
+			var rendered_path = render_path(element_opts.path, element_opts.params);
+			var path = [req].concat(rendered_path);
+			if(opts.elementPath) {
+				element_opts.path = opts.elementPath;
+			}
+			//debug.log("element_opts = ", element_opts);
+			var body = {};
+			body.$ref = ref.apply(undefined, path);
+			body.$ = items.map(view.element(req, res, element_opts));
+			//debug.log('body = ', body);
+	
+			if(is.obj(view.compute_keys)) {
+				return compute_keys(body, view.compute_keys, req, res);
+			}
+			return body;
 
-		if(is.obj(view.compute_keys)) {
-			body = compute_keys(body, view.compute_keys, req, res);
-		}
-
-		if(is.obj(opts.compute_keys)) {
-			body = compute_keys(body, opts.compute_keys, req, res);
-		}
-
-		return body;
-	};
-};
+		}).then(function data_view_collection_2(body) {
+			if(is.obj(opts.compute_keys)) {
+				return compute_keys(body, opts.compute_keys, req, res);
+			}
+			return body;
+		}); // End of Q.fcall
+	}; // End of data_view_collection_0
+}; // End of ResourceView.prototype.collection
 
 // Exports
 
