@@ -1,0 +1,32 @@
+{
+  "name": "nor-rest-view",
+  "version": "0.1.0",
+  "description": "Sendanor REST JSON View Library",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/sendanor/nor-rest-view.git"
+  },
+  "keywords": [
+    "rest",
+    "json",
+    "view"
+  ],
+  "author": "Jaakko-Heikki Heusala <jheusala@iki.fi>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/sendanor/nor-rest-view/issues"
+  },
+  "homepage": "https://github.com/sendanor/nor-rest-view",
+  "dependencies": {
+    "q": ">= 1.0.1 <1.1.0",
+    "nor-debug": ">= 0.1.32 < 0.2.0",
+    "merge": ">= 1.1.2 <1.2.0",
+    "nor-data": ">= 0.0.6 <0.1.0",
+    "nor-is": ">= 0.1.11 <0.2.0",
+    "nor-ref": ">= 0.1.0 <0.2.0"
+  }
+}
