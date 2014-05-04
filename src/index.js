@@ -11,18 +11,20 @@ var strip = require('./strip.js');
 var ref = require('nor-ref');
 
 /** Compute keys */
-function compute_keys(o, opts, req, res) {
-	debug.assert(o).is('object');
+function compute_keys(body, opts, req, res) {
+	debug.assert(body).is('object');
 	debug.assert(opts).is('object');
 	return Object.keys(opts).map(function(key) {
 		debug.assert(opts[key]).is('function');
 		return function compute_step() {
-			return Q.when(opts[key].call(o, req, res)).then(function(value) {
-				o[key] = value;
+			return Q.when(opts[key].call(body, req, res)).then(function(value) {
+				if(is.defined(value)) {
+					body[key] = value;
+				}
 			});
 		};
 	}).reduce(Q.when, Q).then(function() {
-		return o;
+		return body;
 	});
 }
 
@@ -66,6 +68,14 @@ function ResourceView(opts) {
 		view.compute_keys = opts.compute_keys;
 	}
 
+	if(is.obj(opts.element_keys)) {
+		view.element_keys = opts.element_keys;
+	}
+
+	if(is.obj(opts.collection_keys)) {
+		view.collection_keys = opts.collection_keys;
+	}
+
 	//debug.log("view.opts = ", view.opts);
 }
 
@@ -103,51 +113,60 @@ ResourceView.prototype.element = function(req, res, opts) {
 				debug.warn("ResourceView.prototype.element() called with an Array. Is that what you intended?");
 			}
 	
-	
 			var body = strip(item).specials().get();
-			opts.keys.forEach(function data_view_element_2(key) {
+			return opts.keys.map(function data_view_element_2(key) {
+				return function do_step() {
+					return Q.fcall(function create_promise() {
+						var path = [req].concat(render_path(opts.path, params)).concat([item.$id]);
+						//debug.log("path = ", ref.apply(undefined , path));
 	
-				var path = [req].concat(render_path(opts.path, params)).concat([item.$id]);
-				//debug.log("path = ", ref.apply(undefined , path));
-	
-				// 
-				if( (key === '$ref') && is.uuid(item.$id) ) {
-					body.$ref = ref.apply(undefined, path);
-					return;
-				}
+						// 
+						if( (key === '$ref') && is.uuid(item.$id) ) {
+							return ref.apply(undefined, path);
+						}
 
-				// 
-				if( is.uuid(item[key]) && is.object(views[(''+key).toLowerCase()]) ) {
-					body[key] = views[key].element(req, res)(item[key]);
-					return;
-				}
+						// 
+						if( is.uuid(item[key]) && is.object(views[(''+key).toLowerCase()]) ) {
+							return views[key].element(req, res)(item[key]);
+						}
 	
-				// 
-				if( is.object(item[key]) && is.uuid(item[key].$id) && is.undef(item[key].$ref) && is.object(views[(''+key).toLowerCase()]) ) {
-					body[key] = views[key].element(req, res)(item[key]);
-					return;
-				}
+						// 
+						if( is.object(item[key]) && is.uuid(item[key].$id) && is.undef(item[key].$ref) && is.object(views[(''+key).toLowerCase()]) ) {
+							return views[key].element(req, res)(item[key]);
+						}
 	
-				// 
-				if(item[key] !== undefined) {
-					body[key] = item[key];
-					return;
-				}
-	
-			});
+						// 
+						if(item[key] !== undefined) {
+							return item[key];
+						}
+					}).then(function catch_promise_value(value) {
+						body[key] = value;
+					}); // End of return Q.fcall(function() { .. }
+				}; // End of return function() { .. }
+			}).reduce(Q.when, Q).then(function get_body() {
+				return body;
+			}); // End of opts.keys.map(...).reduce()...
+
+		}).then(function(body) {
+
 			//debug.log('body = ', body);
-	
+			
 			if(!body.$type) {
 				body.$type = view.Type;
 			}
 	
 			if(is.obj(view.compute_keys)) {
 				return compute_keys(body, view.compute_keys, req, res);
-			} else {
-				return body;
 			}
+			return body;
 
 		}).then(function data_view_element_3(body) {
+			if(is.obj(view.element_keys)) {
+				return compute_keys(body, view.element_keys, req, res);
+			}
+			return body;
+
+		}).then(function data_view_element_4(body) {
 			if(is.obj(opts.compute_keys)) {
 				return compute_keys(body, opts.compute_keys, req, res);
 			}
@@ -167,6 +186,7 @@ ResourceView.prototype.collection = function(req, res, opts) {
 	//debug.log("(after) opts = ", opts);
 	return function data_view_collection_0(items) {
 		return Q.fcall(function data_view_collection_1() {
+			debug.log('items = ', items);
 			debug.assert(items).is('array');
 			var element_opts = copy(opts);
 			var rendered_path = render_path(element_opts.path, element_opts.params);
@@ -177,18 +197,48 @@ ResourceView.prototype.collection = function(req, res, opts) {
 			//debug.log("element_opts = ", element_opts);
 			var body = {};
 			body.$ref = ref.apply(undefined, path);
-			body.$ = items.map(view.element(req, res, element_opts));
-			//debug.log('body = ', body);
-	
-			if(is.obj(view.compute_keys)) {
-				return compute_keys(body, view.compute_keys, req, res);
-			}
-			return body;
+			body.$ = [];
+
+			return items.map(function build_steps(item) {
+				return function do_step() {
+					return view.element(req, res, element_opts)(item).then(function add_item(i) {
+						body.$.push(i);
+					});
+					/* end of do_step */
+				};
+
+			/* end of build_steps */
+			}).reduce(Q.when, Q).then(function get_body() {
+				debug.log('body = ', body);
+				return body;
+			}); /* get_body */
 
 		}).then(function data_view_collection_2(body) {
+	
+			if(is.obj(view.compute_keys)) {
+				debug.log('body = ', body);
+				return compute_keys(body, view.compute_keys, req, res);
+			}
+
+			debug.log('body = ', body);
+			return body;
+
+		}).then(function data_view_collection_3(body) {
+
+			if(is.obj(view.collection_keys)) {
+				debug.log('body = ', body);
+				return compute_keys(body, view.collection_keys, req, res);
+			}
+
+			debug.log('body = ', body);
+			return body;
+
+		}).then(function data_view_collection_4(body) {
 			if(is.obj(opts.compute_keys)) {
+				debug.log('body = ', body);
 				return compute_keys(body, opts.compute_keys, req, res);
 			}
+			debug.log('body = ', body);
 			return body;
 		}); // End of Q.fcall
 	}; // End of data_view_collection_0
