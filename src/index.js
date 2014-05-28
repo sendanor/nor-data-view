@@ -23,7 +23,7 @@ function compute_keys(body, opts, req, res) {
 				}
 			});
 		};
-	}).reduce(Q.when, Q).then(function() {
+	}).reduce(Q.when, Q()).then(function() {
 		return body;
 	});
 }
@@ -143,7 +143,7 @@ ResourceView.prototype.element = function(req, res, opts) {
 						body[key] = value;
 					}); // End of return Q.fcall(function() { .. }
 				}; // End of return function() { .. }
-			}).reduce(Q.when, Q).then(function get_body() {
+			}).reduce(Q.when, Q()).then(function get_body() {
 				return body;
 			}); // End of opts.keys.map(...).reduce()...
 
@@ -186,7 +186,7 @@ ResourceView.prototype.collection = function(req, res, opts) {
 	//debug.log("(after) opts = ", opts);
 	return function data_view_collection_0(items) {
 		return Q.fcall(function data_view_collection_1() {
-			debug.log('items = ', items);
+			//debug.log('items = ', items);
 			debug.assert(items).is('array');
 			var element_opts = copy(opts);
 			var rendered_path = render_path(element_opts.path, element_opts.params);
@@ -199,6 +199,10 @@ ResourceView.prototype.collection = function(req, res, opts) {
 			body.$ref = ref.apply(undefined, path);
 			body.$ = [];
 
+			if(opts.limit) {
+				body.limit = opts.limit;
+			}
+
 			return items.map(function build_steps(item) {
 				return function do_step() {
 					return view.element(req, res, element_opts)(item).then(function add_item(i) {
@@ -208,37 +212,37 @@ ResourceView.prototype.collection = function(req, res, opts) {
 				};
 
 			/* end of build_steps */
-			}).reduce(Q.when, Q).then(function get_body() {
-				debug.log('body = ', body);
+			}).reduce(Q.when, Q()).then(function get_body() {
+				//debug.log('body = ', body);
 				return body;
 			}); /* get_body */
 
 		}).then(function data_view_collection_2(body) {
 	
 			if(is.obj(view.compute_keys)) {
-				debug.log('body = ', body);
+				//debug.log('body = ', body);
 				return compute_keys(body, view.compute_keys, req, res);
 			}
 
-			debug.log('body = ', body);
+			//debug.log('body = ', body);
 			return body;
 
 		}).then(function data_view_collection_3(body) {
 
 			if(is.obj(view.collection_keys)) {
-				debug.log('body = ', body);
+				//debug.log('body = ', body);
 				return compute_keys(body, view.collection_keys, req, res);
 			}
 
-			debug.log('body = ', body);
+			//debug.log('body = ', body);
 			return body;
 
 		}).then(function data_view_collection_4(body) {
 			if(is.obj(opts.compute_keys)) {
-				debug.log('body = ', body);
+				//debug.log('body = ', body);
 				return compute_keys(body, opts.compute_keys, req, res);
 			}
-			debug.log('body = ', body);
+			//debug.log('body = ', body);
 			return body;
 		}); // End of Q.fcall
 	}; // End of data_view_collection_0
