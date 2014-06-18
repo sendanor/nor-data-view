@@ -18,6 +18,7 @@ function compute_keys(body, opts, req, res) {
 		debug.assert(opts[key]).is('function');
 		return function compute_step() {
 			return Q.when(opts[key].call(body, req, res)).then(function(value) {
+				//debug.log('value = ', value);
 				if(is.defined(value)) {
 					body[key] = value;
 				}
@@ -117,7 +118,13 @@ ResourceView.prototype.element = function(req, res, opts) {
 			return opts.keys.map(function data_view_element_2(key) {
 				return function do_step() {
 					return Q.fcall(function create_promise() {
-						var path = [req].concat(render_path(opts.path, params)).concat([item.$id]);
+						var path;
+
+						if(opts.elementPath) {
+							path = [req].concat(render_path(opts.elementPath, params));
+						} else {
+							path = [req].concat(render_path(opts.path, params)).concat([item.$id]);
+						}
 						//debug.log("path = ", ref.apply(undefined , path));
 	
 						// 
