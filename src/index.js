@@ -77,10 +77,40 @@ function ResourceView(opts) {
 		view.collection_keys = opts.collection_keys;
 	}
 
+	// view.opts.accepted_keys
+	if(is.array(opts.accepted_keys)) {
+		view.opts.accepted_keys = opts.accepted_keys;
+	} else {
+		view.opts.accepted_keys = view.opts.keys;
+	}
+
+	// view.opts.secret_keys
+	view.opts.secret_keys = array_unique( is.array(opts.secret_keys) ? opts.secret_keys : [] );
+
+	// Filter view.opts.accepted_keys
+	view.opts.accepted_keys = array_unique([]
+		.concat(view.opts.accepted_keys)
+		.concat(is.obj(view.compute_keys) ? Object.keys(view.compute_keys) : [])
+		.concat(is.obj(view.element_keys) ? Object.keys(view.element_keys) : [])
+		.concat(is.obj(view.collection_keys) ? Object.keys(view.collection_keys) : [])
+	).filter(function(key) {
+		return view.opts.secret_keys.indexOf(key) === -1;
+	});
+
 	//debug.log("view.opts = ", view.opts);
 }
 
 ResourceView.views = {};
+
+/** Returns unique array */
+var array_unique = function(a) {
+	return a.reduce(function(p, c) {
+		if (p.indexOf(c) < 0) {
+			p.push(c);
+		}
+		return p;
+	}, []);
+};
 
 /** Returns build function for a data view of REST element */
 ResourceView.prototype.element = function(req, res, opts) {
@@ -92,6 +122,25 @@ ResourceView.prototype.element = function(req, res, opts) {
 	debug.assert(view.opts).is('object');
 	opts = merge(view.opts, opts || {});
 	//debug.log('(after) opts = ', opts);
+
+	// opts.accepted_keys
+	if(is.array(opts.accepted_keys)) {
+		opts.accepted_keys = opts.accepted_keys;
+	} else {
+		opts.accepted_keys = opts.keys;
+	}
+
+	opts.secret_keys = array_unique( is.array(opts.secret_keys) ? opts.secret_keys : [] );
+
+	opts.accepted_keys = array_unique([]
+		.concat(opts.accepted_keys)
+		.concat(is.obj(opts.compute_keys) ? Object.keys(opts.compute_keys) : [])
+		.concat(is.obj(view.compute_keys) ? Object.keys(view.compute_keys) : [])
+		.concat(is.obj(view.element_keys) ? Object.keys(view.element_keys) : [])
+	).filter(function(key) {
+		return opts.secret_keys.indexOf(key) === -1;
+	});
+
 	var views = opts.views || ResourceView.views;
 	return function data_view_element_0(item) {
 		return Q.fcall(function data_view_element_1() {
@@ -178,6 +227,18 @@ ResourceView.prototype.element = function(req, res, opts) {
 				return compute_keys(body, opts.compute_keys, req, res);
 			}
 			return body;
+		}).then(function data_view_strip(body) {
+
+			// Strip all keys that are not listed in accepted keys or are listed on opts.secret_keys
+			//debug.log('opts.accepted_keys = ', opts.accepted_keys);
+			//debug.log('opts.secret_keys = ', opts.secret_keys);
+			Object.keys(body).filter(function(key) {
+				return (opts.accepted_keys.indexOf(key) === -1) || (opts.secret_keys.indexOf(key) !== -1);
+			}).forEach(function(key) {
+				delete body[key];
+			});
+
+			return body;
 		}); // End of Q.fcall()
 	}; // end of function(item)
 };
@@ -191,6 +252,26 @@ ResourceView.prototype.collection = function(req, res, opts) {
 	//debug.log("opts = ", opts);
 	opts = merge(view.opts, opts || {});
 	//debug.log("(after) opts = ", opts);
+
+	// opts.accepted_keys
+	if(is.array(opts.accepted_keys)) {
+		opts.accepted_keys = opts.accepted_keys;
+	} else {
+		opts.accepted_keys = opts.keys;
+	}
+
+	opts.secret_keys = array_unique( is.array(opts.secret_keys) ? opts.secret_keys : [] );
+
+	opts.accepted_keys = array_unique(['$']
+		.concat(opts.accepted_keys)
+		.concat(is.obj(opts.compute_keys) ? Object.keys(opts.compute_keys) : [])
+		.concat(is.obj(view.compute_keys) ? Object.keys(view.compute_keys) : [])
+		.concat(is.obj(view.element_keys) ? Object.keys(view.element_keys) : [])
+		.concat(is.obj(view.collection_keys) ? Object.keys(view.collection_keys) : [])
+	).filter(function(key) {
+		return opts.secret_keys.indexOf(key) === -1;
+	});
+
 	return function data_view_collection_0(items) {
 		return Q.fcall(function data_view_collection_1() {
 			//debug.log('items = ', items);
@@ -250,6 +331,18 @@ ResourceView.prototype.collection = function(req, res, opts) {
 				return compute_keys(body, opts.compute_keys, req, res);
 			}
 			//debug.log('body = ', body);
+			return body;
+		}).then(function data_view_collection_strip(body) {
+
+			// Strip all keys that are not listed in accepted keys or are listed on opts.secret_keys
+			//debug.log('opts.accepted_keys = ', opts.accepted_keys);
+			//debug.log('opts.secret_keys = ', opts.secret_keys);
+			Object.keys(body).filter(function(key) {
+				return (opts.accepted_keys.indexOf(key) === -1) || (opts.secret_keys.indexOf(key) !== -1);
+			}).forEach(function(key) {
+				delete body[key];
+			});
+
 			return body;
 		}); // End of Q.fcall
 	}; // End of data_view_collection_0
