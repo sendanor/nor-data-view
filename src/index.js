@@ -54,14 +54,15 @@ function render_path(path, params) {
 /** Builds a builder for REST data views */
 function ResourceView(opts) {
 	var view = this;
-	opts = opts || {};
+	opts = merge({}, opts);
 	
 	debug.assert(opts).is('object');
 	debug.assert(opts.path).is('string');
+	debug.assert(opts.keys).ignore(undefined).is('array');
 
 	view.opts = {};
-	view.opts.keys = opts.keys || ['$id', '$type', '$ref'];
-	view.opts.path = opts.path;
+	view.opts.keys = [].concat( opts.keys || ['$id', '$type', '$ref'] );
+	view.opts.path = ''+opts.path;
 
 	view.Type = opts.Type;
 
@@ -115,19 +116,20 @@ var array_unique = function(a) {
 /** Returns build function for a data view of REST element */
 ResourceView.prototype.element = function(req, res, opts) {
 	var view = this;
+
 	debug.assert(req).is('object');
 	debug.assert(res).is('object');
 	//debug.log('view.opts = ', view.opts);
 	//debug.log('opts = ', opts);
 	debug.assert(view.opts).is('object');
-	opts = merge(view.opts, opts || {});
+	opts = merge({}, view.opts, opts || {});
 	//debug.log('(after) opts = ', opts);
 
 	// opts.accepted_keys
-	if(is.array(opts.accepted_keys)) {
-		opts.accepted_keys = opts.accepted_keys;
-	} else {
-		opts.accepted_keys = opts.keys;
+	if(!is.array(opts.accepted_keys)) {
+		//opts.accepted_keys = opts.accepted_keys;
+	//} else {
+		opts.accepted_keys = [].concat(opts.keys);
 	}
 
 	opts.secret_keys = array_unique( is.array(opts.secret_keys) ? opts.secret_keys : [] );
@@ -250,14 +252,14 @@ ResourceView.prototype.collection = function(req, res, opts) {
 	debug.assert(res).is('object');
 	//debug.log("view.opts = ", view.opts);
 	//debug.log("opts = ", opts);
-	opts = merge(view.opts, opts || {});
+	opts = merge({}, view.opts, opts || {});
 	//debug.log("(after) opts = ", opts);
 
 	// opts.accepted_keys
-	if(is.array(opts.accepted_keys)) {
-		opts.accepted_keys = opts.accepted_keys;
-	} else {
-		opts.accepted_keys = opts.keys;
+	if(!is.array(opts.accepted_keys)) {
+		//opts.accepted_keys = opts.accepted_keys;
+	//} else {
+		opts.accepted_keys = [].concat(opts.keys);
 	}
 
 	opts.secret_keys = array_unique( is.array(opts.secret_keys) ? opts.secret_keys : [] );

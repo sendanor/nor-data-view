@@ -1,6 +1,6 @@
 {
   "name": "nor-data-view",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Sendanor JSON View Library for REST services",
   "main": "src/index.js",
   "scripts": {
