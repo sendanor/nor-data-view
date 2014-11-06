@@ -42,7 +42,7 @@ function fix_object_ids(o) {
 function render_path(path, params) {
 	params = params || {};
 	return [].concat(is.array(path) ? path : [path]).map(function(p) {
-		return p.replace(/:([a-z0-9A-Z\_]+)/g, function(match, key) {
+		return p.replace(/:(\$?[a-z0-9A-Z\-\_]+)/g, function(match, key) {
 			if(params[key] === undefined) {
 				return ':'+key;
 			}
