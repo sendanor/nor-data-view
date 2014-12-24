@@ -2,29 +2,40 @@
 
 "use strict";
 
-var Q = require('q');
+var _Q = require('q');
 var debug = require('nor-debug');
 var merge = require('merge');
 var copy = require('nor-data').copy;
 var is = require('nor-is');
+var ARRAY = require('nor-array');
 var strip = require('./strip.js');
 var ref = require('nor-ref');
+
+/** Returns unique array */
+function array_unique(a) {
+	return ARRAY(a).reduce(function(p, c) {
+		if (p.indexOf(c) < 0) {
+			p.push(c);
+		}
+		return p;
+	}, []);
+}
 
 /** Compute keys */
 function compute_keys(body, opts, req, res) {
 	debug.assert(body).is('object');
 	debug.assert(opts).is('object');
-	return Object.keys(opts).map(function(key) {
+	return ARRAY(Object.keys(opts)).map(function(key) {
 		debug.assert(opts[key]).is('function');
 		return function compute_step() {
-			return Q.when(opts[key].call(body, req, res)).then(function(value) {
+			return _Q.when(opts[key].call(body, req, res)).then(function(value) {
 				//debug.log('value = ', value);
 				if(is.defined(value)) {
 					body[key] = value;
 				}
 			});
 		};
-	}).reduce(Q.when, Q()).then(function() {
+	}).reduce(_Q.when, _Q()).then(function() {
 		return body;
 	});
 }
@@ -41,21 +52,21 @@ function fix_object_ids(o) {
 /** Render `path` with optional `params` */
 function render_path(path, params) {
 	params = params || {};
-	return [].concat(is.array(path) ? path : [path]).map(function(p) {
+	return ARRAY([]).concat(is.array(path) ? path : [path]).map(function(p) {
 		return p.replace(/:(\$?[a-z0-9A-Z\-\_]+)/g, function(match, key) {
 			if(params[key] === undefined) {
 				return ':'+key;
 			}
 			return ''+fix_object_ids(params[key]);
 		});
-	});
+	}).valueOf();
 }
 
 /** Builds a builder for REST data views */
 function ResourceView(opts) {
 	var view = this;
 	opts = merge({}, opts);
-	
+
 	debug.assert(opts).is('object');
 	debug.assert(opts.path).is('string');
 	debug.assert(opts.keys).ignore(undefined).is('array');
@@ -89,29 +100,19 @@ function ResourceView(opts) {
 	view.opts.secret_keys = array_unique( is.array(opts.secret_keys) ? opts.secret_keys : [] );
 
 	// Filter view.opts.accepted_keys
-	view.opts.accepted_keys = array_unique([]
+	view.opts.accepted_keys = ARRAY(array_unique([]
 		.concat(view.opts.accepted_keys)
 		.concat(is.obj(view.compute_keys) ? Object.keys(view.compute_keys) : [])
 		.concat(is.obj(view.element_keys) ? Object.keys(view.element_keys) : [])
 		.concat(is.obj(view.collection_keys) ? Object.keys(view.collection_keys) : [])
-	).filter(function(key) {
+	)).filter(function(key) {
 		return view.opts.secret_keys.indexOf(key) === -1;
-	});
+	}).valueOf();
 
 	//debug.log("view.opts = ", view.opts);
 }
 
 ResourceView.views = {};
-
-/** Returns unique array */
-var array_unique = function(a) {
-	return a.reduce(function(p, c) {
-		if (p.indexOf(c) < 0) {
-			p.push(c);
-		}
-		return p;
-	}, []);
-};
 
 /** Returns build function for a data view of REST element */
 ResourceView.prototype.element = function(req, res, opts) {
@@ -134,41 +135,41 @@ ResourceView.prototype.element = function(req, res, opts) {
 
 	opts.secret_keys = array_unique( is.array(opts.secret_keys) ? opts.secret_keys : [] );
 
-	opts.accepted_keys = array_unique([]
+	opts.accepted_keys = ARRAY(array_unique([]
 		.concat(opts.accepted_keys)
 		.concat(is.obj(opts.compute_keys) ? Object.keys(opts.compute_keys) : [])
 		.concat(is.obj(view.compute_keys) ? Object.keys(view.compute_keys) : [])
 		.concat(is.obj(view.element_keys) ? Object.keys(view.element_keys) : [])
-	).filter(function(key) {
+	)).filter(function(key) {
 		return opts.secret_keys.indexOf(key) === -1;
-	});
+	}).valueOf();
 
 	var views = opts.views || ResourceView.views;
 	return function data_view_element_0(item) {
-		return Q.fcall(function data_view_element_1() {
-			
+		return _Q.fcall(function data_view_element_1() {
+
 			if(is.string(item)) {
 				debug.assert(item).is('uuid');
 				item = {'$id': item};
 			}
 			debug.assert(item).is('object');
-			
+
 			//debug.log('opts.params = ', opts.params);
 			//debug.log('item = ', item);
-	
+
 			opts.params = is.obj(opts.params) ? opts.params : {};
 			var params = merge(opts.params, item);
-	
+
 			//debug.log('params = ', params);
-	
+
 			if(is.array(item)) {
 				debug.warn("ResourceView.prototype.element() called with an Array. Is that what you intended?");
 			}
-	
+
 			var body = strip(item).specials().get();
-			return opts.keys.map(function data_view_element_2(key) {
+			return ARRAY(opts.keys).map(function data_view_element_2(key) {
 				return function do_step() {
-					return Q.fcall(function create_promise() {
+					return _Q.fcall(function create_promise() {
 						var path;
 
 						if(opts.elementPath) {
@@ -177,7 +178,7 @@ ResourceView.prototype.element = function(req, res, opts) {
 							path = [req].concat(render_path(opts.path, params)).concat([item.$id]);
 						}
 						//debug.log("path = ", ref.apply(undefined , path));
-	
+
 						// 
 						if( (key === '$ref') && is.uuid(item.$id) ) {
 							return ref.apply(undefined, path);
@@ -187,32 +188,32 @@ ResourceView.prototype.element = function(req, res, opts) {
 						if( is.uuid(item[key]) && is.object(views[(''+key).toLowerCase()]) ) {
 							return views[key].element(req, res)(item[key]);
 						}
-	
+
 						// 
 						if( is.object(item[key]) && is.uuid(item[key].$id) && is.undef(item[key].$ref) && is.object(views[(''+key).toLowerCase()]) ) {
 							return views[key].element(req, res)(item[key]);
 						}
-	
+
 						// 
 						if(item[key] !== undefined) {
 							return item[key];
 						}
 					}).then(function catch_promise_value(value) {
 						body[key] = value;
-					}); // End of return Q.fcall(function() { .. }
+					}); // End of return _Q.fcall(function() { .. }
 				}; // End of return function() { .. }
-			}).reduce(Q.when, Q()).then(function get_body() {
+			}).reduce(_Q.when, _Q()).then(function get_body() {
 				return body;
 			}); // End of opts.keys.map(...).reduce()...
 
 		}).then(function(body) {
 
 			//debug.log('body = ', body);
-			
+
 			if(!body.$type) {
 				body.$type = view.Type;
 			}
-	
+
 			if(is.obj(view.compute_keys)) {
 				return compute_keys(body, view.compute_keys, req, res);
 			}
@@ -234,14 +235,14 @@ ResourceView.prototype.element = function(req, res, opts) {
 			// Strip all keys that are not listed in accepted keys or are listed on opts.secret_keys
 			//debug.log('opts.accepted_keys = ', opts.accepted_keys);
 			//debug.log('opts.secret_keys = ', opts.secret_keys);
-			Object.keys(body).filter(function(key) {
+			ARRAY(Object.keys(body)).filter(function(key) {
 				return (opts.accepted_keys.indexOf(key) === -1) || (opts.secret_keys.indexOf(key) !== -1);
 			}).forEach(function(key) {
 				delete body[key];
 			});
 
 			return body;
-		}); // End of Q.fcall()
+		}); // End of _Q.fcall()
 	}; // end of function(item)
 };
 
@@ -264,18 +265,18 @@ ResourceView.prototype.collection = function(req, res, opts) {
 
 	opts.secret_keys = array_unique( is.array(opts.secret_keys) ? opts.secret_keys : [] );
 
-	opts.accepted_keys = array_unique(['$']
+	opts.accepted_keys = ARRAY(array_unique(['$']
 		.concat(opts.accepted_keys)
 		.concat(is.obj(opts.compute_keys) ? Object.keys(opts.compute_keys) : [])
 		.concat(is.obj(view.compute_keys) ? Object.keys(view.compute_keys) : [])
 		.concat(is.obj(view.element_keys) ? Object.keys(view.element_keys) : [])
 		.concat(is.obj(view.collection_keys) ? Object.keys(view.collection_keys) : [])
-	).filter(function(key) {
+	)).filter(function(key) {
 		return opts.secret_keys.indexOf(key) === -1;
 	});
 
 	return function data_view_collection_0(items) {
-		return Q.fcall(function data_view_collection_1() {
+		return _Q.fcall(function data_view_collection_1() {
 			//debug.log('items = ', items);
 			debug.assert(items).is('array');
 			var element_opts = copy(opts);
@@ -293,7 +294,7 @@ ResourceView.prototype.collection = function(req, res, opts) {
 				body.limit = opts.limit;
 			}
 
-			return items.map(function build_steps(item) {
+			return ARRAY(items).map(function build_steps(item) {
 				return function do_step() {
 					return view.element(req, res, element_opts)(item).then(function add_item(i) {
 						body.$.push(i);
@@ -302,13 +303,13 @@ ResourceView.prototype.collection = function(req, res, opts) {
 				};
 
 			/* end of build_steps */
-			}).reduce(Q.when, Q()).then(function get_body() {
+			}).reduce(_Q.when, _Q()).then(function get_body() {
 				//debug.log('body = ', body);
 				return body;
 			}); /* get_body */
 
 		}).then(function data_view_collection_2(body) {
-	
+
 			if(is.obj(view.compute_keys)) {
 				//debug.log('body = ', body);
 				return compute_keys(body, view.compute_keys, req, res);
@@ -339,14 +340,14 @@ ResourceView.prototype.collection = function(req, res, opts) {
 			// Strip all keys that are not listed in accepted keys or are listed on opts.secret_keys
 			//debug.log('opts.accepted_keys = ', opts.accepted_keys);
 			//debug.log('opts.secret_keys = ', opts.secret_keys);
-			Object.keys(body).filter(function(key) {
+			ARRAY(Object.keys(body)).filter(function(key) {
 				return (opts.accepted_keys.indexOf(key) === -1) || (opts.secret_keys.indexOf(key) !== -1);
 			}).forEach(function(key) {
 				delete body[key];
 			});
 
 			return body;
-		}); // End of Q.fcall
+		}); // End of _Q.fcall
 	}; // End of data_view_collection_0
 }; // End of ResourceView.prototype.collection
 

@@ -5,6 +5,7 @@
 
 var debug = require('nor-debug');
 var copy = require('nor-data').copy;
+var ARRAY = require('nor-array');
 
 /** Interface to strip properties from objects
  * @param data {object} The object which properties you want to manipulate
@@ -19,7 +20,7 @@ module.exports = function(data) {
 	 * @returns {object} The copy of data without any properties with leading '$' or '_' letter.
 	 */
 	strip.specials = function strip_specials () {
-		Object.keys(data).filter(function(key) {
+		ARRAY(Object.keys(data)).filter(function(key) {
 			return ( (key.substr(0, 1) === '$') || (key.substr(0, 1) === '_') ) ? true : false;
 		}).forEach(function(key) {
 			delete data[key];
