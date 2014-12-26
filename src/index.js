@@ -8,6 +8,7 @@ var merge = require('merge');
 var copy = require('nor-data').copy;
 var is = require('nor-is');
 var ARRAY = require('nor-array');
+var FUNCTION = require('nor-function');
 var strip = require('./strip.js');
 var ref = require('nor-ref');
 
@@ -177,11 +178,11 @@ ResourceView.prototype.element = function(req, res, opts) {
 						} else {
 							path = [req].concat(render_path(opts.path, params)).concat([item.$id]);
 						}
-						//debug.log("path = ", ref.apply(undefined , path));
+						//debug.log("path = ", FUNCTION(ref).curryApply(path));
 
 						// 
 						if( (key === '$ref') && is.uuid(item.$id) ) {
-							return ref.apply(undefined, path);
+							return FUNCTION(ref).curryApply(path);
 						}
 
 						// 
@@ -287,7 +288,7 @@ ResourceView.prototype.collection = function(req, res, opts) {
 			}
 			//debug.log("element_opts = ", element_opts);
 			var body = {};
-			body.$ref = ref.apply(undefined, path);
+			body.$ref = FUNCTION(ref).curryApply(path);
 			body.$ = [];
 
 			if(opts.limit) {
