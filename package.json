@@ -1,6 +1,6 @@
 {
   "name": "nor-data-view",
-  "version": "0.1.18",
+  "version": "0.1.19",
   "description": "Sendanor JSON View Library for REST services",
   "main": "src/index.js",
   "scripts": {
@@ -25,12 +25,12 @@
   },
   "homepage": "https://github.com/sendanor/nor-data-view",
   "dependencies": {
-    "nor-function" : ">= 0.1.5 < 0.2.0",
-    "nor-array" : ">= 0.1.6 < 0.2.0",
-    "nor-debug" : ">= 0.1.48 < 0.2.0",
-    "nor-data"  : ">= 0.0.17  < 0.1.0",
+    "nor-function" : ">= 0.1.6 < 0.2.0",
+    "nor-array" : ">= 0.1.7 < 0.2.0",
+    "nor-debug" : ">= 0.1.49 < 0.2.0",
+    "nor-data"  : ">= 0.0.18  < 0.1.0",
     "nor-is"    : ">= 0.1.16 < 0.2.0",
-    "nor-ref"   : ">= 0.1.3  < 0.2.0",
+    "nor-ref"   : ">= 0.1.4  < 0.2.0",
     "q"         : ">= 1.0.1  < 1.1.0",
     "merge"     : ">= 1.1.3  < 1.2.0"
   },
