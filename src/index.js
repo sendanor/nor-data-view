@@ -12,6 +12,8 @@ var FUNCTION = require('nor-function');
 var strip = require('./strip.js');
 var ref = require('nor-ref');
 
+var NOR_DATA_VIEW_SLOW_STATS = is.enabled(process.env.NOR_DATA_VIEW_SLOW_STATS) ? true : debug.isDevelopment();
+
 /** Returns unique array */
 function array_unique(a) {
 	return ARRAY(a).reduce(function(p, c) {
@@ -29,10 +31,27 @@ function compute_keys(body, opts, req, res) {
 	return ARRAY(Object.keys(opts)).map(function(key) {
 		debug.assert(opts[key]).is('function');
 		return function compute_step() {
+
+			var time;
+
+			if(NOR_DATA_VIEW_SLOW_STATS) {
+				time = process.hrtime();
+			}
+
 			return _Q.when(opts[key].call(body, req, res)).then(function(value) {
 				//debug.log('value = ', value);
 				if(is.defined(value)) {
 					body[key] = value;
+				}
+
+				if(NOR_DATA_VIEW_SLOW_STATS) {
+					var diff = process.hrtime(time);
+					var speed = (diff[0] * 1e9 + diff[1]) / 1000000000;
+					if(speed >= 0.05) {
+						debug.warn('computing ', key, ' took', speed, ' s');
+					} else if(speed >= 0.005) {
+						debug.log('computing ', key, ' took', speed, ' s');
+					}
 				}
 			});
 		};
