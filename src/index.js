@@ -48,9 +48,9 @@ function compute_keys(body, opts, req, res) {
 					var diff = process.hrtime(time);
 					var speed = (diff[0] * 1e9 + diff[1]) / 1000000000;
 					if(speed >= 0.05) {
-						debug.warn('computing ', key, ' took', speed, ' s');
+						debug.warn('computing ', body.$type + '#' + key, ' took', speed, ' s');
 					} else if(speed >= 0.005) {
-						debug.log('computing ', key, ' took', speed, ' s');
+						debug.log('computing ', body.$type + '#' + key, ' took', speed, ' s');
 					}
 				}
 			});
